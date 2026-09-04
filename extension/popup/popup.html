@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Vision Agent</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <h2>Privacy Vision Agent</h2>
+    <span class="badge">SIH 2026 Prototype</span>
+  </div>
+
+  <div class="content">
+    <div class="actions">
+      <button id="inspect-btn" class="primary-btn">Inspect DOM</button>
+      <button id="capture-btn" class="secondary-btn">Capture Canvas</button>
+      <button id="ocr-btn" class="secondary-btn" disabled>Run Local OCR</button>
+      <button id="copy-btn" class="secondary-btn" disabled>Copy JSON</button>
+    </div>
+
+    <div id="status-container" class="status-container hidden">
+      <div id="status-message">Ready.</div>
+    </div>
+
+    <div id="meta-container" class="meta-grid hidden">
+      <div class="meta-card">
+        <span class="meta-label">Observation ID</span>
+        <span id="meta-obs-id" class="meta-value">-</span>
+      </div>
+      <div class="meta-card">
+        <span class="meta-label">DOM Elements</span>
+        <span id="meta-elements" class="meta-value">-</span>
+      </div>
+      <div class="meta-card full-width">
+        <span class="meta-label">Title</span>
+        <span id="meta-title" class="meta-value">-</span>
+      </div>
+      <div class="meta-card full-width">
+        <span class="meta-label">URL</span>
+        <span id="meta-url" class="meta-value">-</span>
+      </div>
+    </div>
+
+    <div id="canvas-container" class="canvas-container hidden">
+      <div class="json-header">
+        <span>Canvas Preview (<span id="canvas-dim">-</span>)</span>
+      </div>
+      <div class="preview-box">
+        <canvas id="canvas-preview"></canvas>
+      </div>
+    </div>
+
+    <div class="json-header">
+      <span id="output-title">PageState / OCR Output JSON</span>
+    </div>
+    <div class="json-container">
+      <pre id="json-output">// Click "Inspect DOM" or "Run Local OCR" to view results</pre>
+    </div>
+  </div>
+
+  <script src="../lib/tesseract.min.js"></script>
+  <script src="../perception/canvas-processor.js"></script>
+  <script src="../perception/ocr-engine.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

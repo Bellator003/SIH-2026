@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Privacy Vision Agent - SIH 2026",
+  "version": "1.0.0",
+  "description": "On-device Visual Perception and Privacy-Preserving Agent for Browser Workflows",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/dom-analyzer.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Privacy Vision Agent"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "lib/*",
+        "lib/lang/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
