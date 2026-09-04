@@ -141,6 +141,29 @@ button:disabled {
   margin-bottom: 12px;
 }
 
+.debug-stats-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.debug-tag {
+  font-size: 10px;
+  color: #475569;
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.debug-tag b {
+  color: #0f172a;
+}
+
 .preview-box {
   background-color: #1e293b;
   border-radius: 6px;

@@ -17,7 +17,7 @@
       <button id="inspect-btn" class="primary-btn">Inspect DOM</button>
       <button id="capture-btn" class="secondary-btn">Capture Canvas</button>
       <button id="ocr-btn" class="secondary-btn" disabled>Run Local OCR</button>
-      <button id="copy-btn" class="secondary-btn" disabled>Copy JSON</button>
+      <button id="synthetic-ocr-btn" class="secondary-btn">Test Synthetic OCR</button>
     </div>
 
     <div id="status-container" class="status-container hidden">
@@ -45,7 +45,13 @@
 
     <div id="canvas-container" class="canvas-container hidden">
       <div class="json-header">
-        <span>Canvas Preview (<span id="canvas-dim">-</span>)</span>
+        <span>Canvas Preview & Debug Stats (<span id="canvas-dim">-</span>)</span>
+      </div>
+      <div id="canvas-debug-stats" class="debug-stats-box">
+        <span class="debug-tag">Width: <b id="dbg-width">-</b></span>
+        <span class="debug-tag">Height: <b id="dbg-height">-</b></span>
+        <span class="debug-tag">Has Data: <b id="dbg-hasdata">-</b></span>
+        <span class="debug-tag">Non-Zero Pixels: <b id="dbg-percent">-</b></span>
       </div>
       <div class="preview-box">
         <canvas id="canvas-preview"></canvas>
@@ -56,7 +62,7 @@
       <span id="output-title">PageState / OCR Output JSON</span>
     </div>
     <div class="json-container">
-      <pre id="json-output">// Click "Inspect DOM" or "Run Local OCR" to view results</pre>
+      <pre id="json-output">// Click "Inspect DOM", "Run Local OCR", or "Test Synthetic OCR" to view results</pre>
     </div>
   </div>
 

@@ -20,7 +20,16 @@ class OCREngine {
       const corePath = chrome.runtime.getURL("lib");
       const langPath = chrome.runtime.getURL("lib/lang");
 
-      console.log("[OCREngine] Initializing local Tesseract worker with paths:", {
+      // Ensure fresh load from local extension assets without stale IndexedDB cache
+      try {
+        if (typeof indexedDB !== "undefined") {
+          indexedDB.deleteDatabase("keyval-store");
+        }
+      } catch (e) {
+        console.warn("[OCREngine] Cache clear notice:", e);
+      }
+
+      console.log("[OCREngine Diagnostic] Initializing local Tesseract worker with options:", {
         workerPath,
         corePath,
         langPath
@@ -31,14 +40,30 @@ class OCREngine {
         corePath: corePath,
         langPath: langPath,
         workerBlobURL: false,
+        cacheMethod: "none",
         logger: (m) => {
+          console.log("[OCREngine Logger Status]:", m.status, m.progress);
           if (m && m.status === "recognizing text" && onProgress && typeof m.progress === "number") {
             onProgress(m.progress);
           }
         }
       });
 
+      console.log("[OCREngine Diagnostic] Tesseract worker initialization completed successfully.");
+      console.log("[OCREngine Diagnostic] Input type:", imageInput ? imageInput.constructor.name : typeof imageInput);
+
       const ret = await worker.recognize(imageInput);
+
+      console.log("[OCREngine Diagnostic] Raw Tesseract result:", ret);
+
+      if (ret && ret.data) {
+        console.log("[OCREngine Diagnostic] ret.data.text:", JSON.stringify(ret.data.text));
+        console.log("[OCREngine Diagnostic] ret.data.confidence:", ret.data.confidence);
+        console.log("[OCREngine Diagnostic] ret.data.words.length:", ret.data.words ? ret.data.words.length : "N/A");
+        console.log("[OCREngine Diagnostic] ret.data.lines.length:", ret.data.lines ? ret.data.lines.length : "N/A");
+        console.log("[OCREngine Diagnostic] ret.data.blocks.length:", ret.data.blocks ? ret.data.blocks.length : "N/A");
+      }
+
       const results = [];
 
       if (ret && ret.data && ret.data.words) {
@@ -64,6 +89,7 @@ class OCREngine {
         }
       }
 
+      console.log("[OCREngine Diagnostic] Parsed results count:", results.length);
       return results;
     } catch (err) {
       console.error("[OCREngine Error]", err);
