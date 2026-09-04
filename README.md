@@ -12,7 +12,6 @@ It captures webpage structure and visual context locally, runs OCR and privacy r
 1. Open Google Chrome and go to `chrome://extensions`.
 2. Enable **Developer mode** (toggle in top-right corner).
 3. Click **Load unpacked** (top-left button) and select the `extension` folder:
-   `c:\Users\yashv\Dropbox\VS CODE\SIH 2026\extension`
 
 ### 2. Inspect Webpage DOM
 1. Navigate to any webpage (e.g. `https://wikipedia.org`).
