@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const canvasPreview = document.getElementById("canvas-preview");
   const canvasDim = document.getElementById("canvas-dim");
 
+<<<<<<< HEAD
   const piiDebugContainer = document.getElementById("pii-debug-container");
   const piiCount = document.getElementById("pii-count");
   const piiJsonOutput = document.getElementById("pii-json-output");
@@ -43,29 +44,97 @@ document.addEventListener("DOMContentLoaded", () => {
     inspectBtn.addEventListener("click", async () => {
       showStatus("Analyzing webpage DOM & page text...", "info");
       inspectBtn.disabled = true;
+=======
+  // Privacy Report elements
+  const privacyReport = document.getElementById("privacy-report");
+  const gateVerdict = document.getElementById("gate-verdict");
+  const statTotalPII = document.getElementById("stat-total-pii");
+  const statRedacted = document.getElementById("stat-redacted");
+  const statCritical = document.getElementById("stat-critical");
+  const statHigh = document.getElementById("stat-high");
+  const piiBreakdown = document.getElementById("pii-breakdown");
+  const piiBreakdownList = document.getElementById("pii-breakdown-list");
+  const toggleAuditBtn = document.getElementById("toggle-audit-btn");
+  const auditLogContainer = document.getElementById("audit-log-container");
+  const auditLogOutput = document.getElementById("audit-log-output");
+
+  // Gate mode buttons
+  const modeBtns = document.querySelectorAll(".mode-btn");
+
+  let currentJsonData = null;
+  let lastOCRResults = null;
+  let lastPageStateRaw = null;
+
+  // ── Gate Mode Toggle ──
+  modeBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      modeBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const mode = btn.getAttribute("data-mode");
+      PrivacyConfig.setMode(mode);
+      showStatus(`Privacy Gate mode: ${mode.toUpperCase()}`, "info");
+    });
+  });
+
+  // ── Audit Log Toggle ──
+  toggleAuditBtn.addEventListener("click", () => {
+    const isHidden = auditLogContainer.classList.contains("hidden");
+    auditLogContainer.classList.toggle("hidden");
+    toggleAuditBtn.textContent = isHidden ? "View Audit Log ▾" : "View Audit Log ▸";
+
+    if (isHidden) {
+      const log = PrivacyGate.getAuditLog();
+      auditLogOutput.textContent = log.length > 0
+        ? JSON.stringify(log, null, 2)
+        : "// No audit entries yet. Run a scan first.";
+    }
+  });
+
+  // ── Inspect DOM (with Privacy Gate) ──
+  inspectBtn.addEventListener("click", async () => {
+    showStatus("Analyzing webpage DOM...", "info");
+    inspectBtn.disabled = true;
+>>>>>>> ef4731b (feat(privacy): add local Privacy Gate engine with multi-strategy OCR & DOM PII redaction)
 
       try {
         const response = await chrome.runtime.sendMessage({ action: "INSPECT_PAGE" });
 
         if (response && response.status === "success" && response.pageState) {
-          currentJsonData = response.pageState;
-          renderPageState(currentJsonData);
+          lastPageStateRaw = response.pageState;
 
-          // 1. STRUCTURAL DOM PII (From Form Inputs)
-          if (typeof DOMDetector !== "undefined") {
-            const structuralDetections = DOMDetector.detect(response.pageState);
-            console.log("=== STRUCTURAL DOM PII ===", structuralDetections);
-            renderPIIDebug(structuralDetections);
-          }
+          // ── PRIVACY GATE ──
+          if (typeof PrivacyGate !== "undefined") {
+            const gateResult = PrivacyGate.sanitize({ pageState: lastPageStateRaw });
+            currentJsonData = gateResult.sanitizedPageState;
+            renderPageState(currentJsonData);
+            if (typeof renderPrivacyReport === "function") {
+              renderPrivacyReport(gateResult.privacyReport, gateResult.auditLog);
+            }
 
-          // 2. PAGE TEXT PII & DOM TEXT REGIONS (From Whole-Page Text Extraction)
-          if (response.domTextData) {
-            console.log("=== DOM TEXT REGIONS ===", response.domTextData.textRegions);
-            console.log("=== PAGE TEXT PII DETECTIONS ===", response.domTextData.detections);
-            renderDOMTextDebug(response.domTextData);
-            showStatus(`DOM analysis complete! ${response.domTextData.textRegions.length} text regions, ${response.domTextData.detections.length} page text PII.`, "info");
+            const verdict = gateResult.privacyReport.gateVerdict;
+            if (verdict === "BLOCKED") {
+              showStatus(`Privacy Gate: BLOCKED — ${gateResult.privacyReport.totalPIIFound} PII items detected (Critical PII found)`, "error");
+            } else if (verdict === "WARNING") {
+              showStatus(`Privacy Gate: WARNING — ${gateResult.privacyReport.totalPIIFound} PII items redacted. Review before sending.`, "warning");
+            } else {
+              showStatus(`Privacy Gate: PASS — ${gateResult.privacyReport.totalPIIFound} PII items redacted. Context is safe.`, "info");
+            }
           } else {
-            showStatus("DOM analysis complete!", "info");
+            currentJsonData = response.pageState;
+            renderPageState(currentJsonData);
+
+            if (typeof DOMDetector !== "undefined") {
+              const structuralDetections = DOMDetector.detect(response.pageState);
+              console.log("=== STRUCTURAL DOM PII ===", structuralDetections);
+              if (typeof renderPIIDebug === "function") renderPIIDebug(structuralDetections);
+            }
+
+            if (response.domTextData) {
+              if (typeof renderDOMTextDebug === "function") renderDOMTextDebug(response.domTextData);
+              showStatus(`DOM analysis complete! ${response.domTextData.textRegions.length} text regions, ${response.domTextData.detections.length} page text PII.`, "info");
+            } else {
+              showStatus("DOM analysis complete!", "info");
+            }
           }
 
           if (copyBtn) copyBtn.disabled = false;
@@ -97,13 +166,15 @@ document.addEventListener("DOMContentLoaded", () => {
           showStatus("Rendering image into Canvas...", "info");
           const { width, height } = await CanvasProcessor.loadToCanvas(response.dataUrl, canvasPreview);
 
-          const stats = CanvasProcessor.inspectCanvas(canvasPreview);
-          renderCanvasDebug(stats);
+          if (typeof CanvasProcessor.inspectCanvas === "function") {
+            const stats = CanvasProcessor.inspectCanvas(canvasPreview);
+            if (typeof renderCanvasDebug === "function") renderCanvasDebug(stats);
+          }
 
           if (canvasDim) canvasDim.textContent = `${width} × ${height} px`;
           if (canvasContainer) canvasContainer.classList.remove("hidden");
           if (ocrBtn) ocrBtn.disabled = false;
-          showStatus(`Canvas ready! ${stats.nonZeroPercent}% non-zero pixels. Click 'Run Local OCR'.`, "info");
+          showStatus(`Canvas ready! Screenshot rendered. Click 'Run Local OCR'.`, "info");
         } else {
           const errorMsg = response?.message || "Failed to capture screenshot.";
           showStatus(errorMsg, "error");
@@ -124,15 +195,18 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const stats = CanvasProcessor.inspectCanvas(canvasPreview);
-      console.log("[OCR Debug] Inspecting screenshot canvas before Tesseract:", stats);
-
-      if (!stats.hasData) {
-        showStatus("Warning: Canvas is completely empty/blank (0% pixels).", "error");
-        return;
+      if (!lastPageStateRaw) {
+        try {
+          const resp = await chrome.runtime.sendMessage({ action: "INSPECT_PAGE" });
+          if (resp && resp.status === "success" && resp.pageState) {
+            lastPageStateRaw = resp.pageState;
+          }
+        } catch (e) {
+          console.warn("[OCR] Optional DOM fetch skipped:", e);
+        }
       }
 
-      showStatus(`Initializing Tesseract.js OCR engine (${stats.width}x${stats.height} px, ${stats.nonZeroPercent}% content)...`, "info");
+      showStatus("Initializing Tesseract.js OCR engine...", "info");
       ocrBtn.disabled = true;
 
       try {
@@ -141,37 +215,56 @@ document.addEventListener("DOMContentLoaded", () => {
           showStatus(`Running OCR: ${pct}% complete...`, "info");
         });
 
-        // Pass each OCR text region through existing TextDetector
-        const ocrPiiDetections = [];
-        for (const region of ocrResults) {
-          if (typeof TextDetector !== "undefined") {
-            const detections = TextDetector.detect(region.text, {
-              source: typeof PIISource !== "undefined" ? PIISource.OCR : "OCR",
-              elementId: null,
-              bbox: region.bbox
-            });
-            ocrPiiDetections.push(...detections);
+        console.log("[OCR Raw Results]", ocrResults);
+
+        // ── PRIVACY GATE (Synthesize DOM pageState + OCR results together) ──
+        if (typeof PrivacyGate !== "undefined") {
+          const gateResult = PrivacyGate.sanitize({
+            pageState: lastPageStateRaw,
+            ocrResults: ocrResults || []
+          });
+
+          lastOCRResults = gateResult.sanitizedOCR || [];
+          currentJsonData = {
+            pageState: gateResult.sanitizedPageState,
+            ocr: lastOCRResults
+          };
+          if (outputTitle) outputTitle.textContent = `Sanitized Context (${lastOCRResults.length} OCR regions, ${gateResult.privacyReport.totalPIIFound} total PII)`;
+          if (jsonOutput) jsonOutput.textContent = JSON.stringify(currentJsonData, null, 2);
+          if (typeof renderPrivacyReport === "function") {
+            renderPrivacyReport(gateResult.privacyReport, gateResult.auditLog);
           }
+
+          const piiCount = gateResult.privacyReport.totalPIIFound;
+          const statusType = piiCount > 0 ? (gateResult.privacyReport.gateVerdict === "BLOCKED" ? "error" : "warning") : "info";
+          showStatus(`Scan complete! DOM + OCR combined: ${piiCount} PII detected (${gateResult.privacyReport.gateVerdict}).`, statusType);
+        } else {
+          // Fallback if PrivacyGate not exposed
+          const ocrPiiDetections = [];
+          for (const region of ocrResults) {
+            if (typeof TextDetector !== "undefined") {
+              const detections = TextDetector.detect(region.text, {
+                source: typeof PIISource !== "undefined" ? PIISource.OCR : "OCR",
+                elementId: null,
+                bbox: region.bbox
+              });
+              ocrPiiDetections.push(...detections);
+            }
+          }
+
+          currentJsonData = {
+            debugSummary: `OCR RESULTS: ${ocrResults.length} | OCR PII DETECTIONS: ${ocrPiiDetections.length}`,
+            ocrResultsCount: ocrResults.length,
+            ocrPiiDetectionsCount: ocrPiiDetections.length,
+            ocrPiiDetections: ocrPiiDetections,
+            ocrResults: ocrResults
+          };
+          if (outputTitle) outputTitle.textContent = `OCR Results & PII (OCR RESULTS: ${ocrResults.length}, OCR PII DETECTIONS: ${ocrPiiDetections.length})`;
+          if (jsonOutput) jsonOutput.textContent = JSON.stringify(currentJsonData, null, 2);
+          showStatus(`OCR complete! ${ocrResults.length} regions, ${ocrPiiDetections.length} PII detected.`, "info");
         }
 
-        // Temporary DEBUG output
-        console.log(`OCR RESULTS: ${ocrResults.length}`);
-        console.log(`OCR PII DETECTIONS: ${ocrPiiDetections.length}`);
-        console.log("=== OCR PII DETECTIONS ===", ocrPiiDetections);
-
-        renderOCRPIIDebug(ocrResults.length, ocrPiiDetections);
-
-        currentJsonData = {
-          debugSummary: `OCR RESULTS: ${ocrResults.length} | OCR PII DETECTIONS: ${ocrPiiDetections.length}`,
-          ocrResultsCount: ocrResults.length,
-          ocrPiiDetectionsCount: ocrPiiDetections.length,
-          ocrPiiDetections: ocrPiiDetections,
-          ocrResults: ocrResults
-        };
-        if (outputTitle) outputTitle.textContent = `OCR Results & PII (OCR RESULTS: ${ocrResults.length}, OCR PII DETECTIONS: ${ocrPiiDetections.length})`;
-        if (jsonOutput) jsonOutput.textContent = JSON.stringify(currentJsonData, null, 2);
         if (copyBtn) copyBtn.disabled = false;
-        showStatus(`OCR complete! OCR RESULTS: ${ocrResults.length}, OCR PII DETECTIONS: ${ocrPiiDetections.length}.`, "info");
       } catch (err) {
         console.error("[OCR Error Raw]", err);
         const displayErr = err?.message || (typeof err === "object" ? JSON.stringify(err) : String(err));
@@ -290,9 +383,80 @@ document.addEventListener("DOMContentLoaded", () => {
       dbgHasData.textContent = stats.hasData ? "YES (True)" : "NO (Empty)";
       dbgHasData.style.color = stats.hasData ? "#16a34a" : "#dc2626";
     }
+<<<<<<< HEAD
     if (dbgPercent) dbgPercent.textContent = `${stats.nonZeroPercent}% (${stats.nonZeroPixels.toLocaleString()} px)`;
   }
+=======
+  });
 
+  // ── OCR (with Privacy Gate) ──
+  ocrBtn.addEventListener("click", async () => {
+    if (!canvasPreview || canvasPreview.width === 0) {
+      showStatus("Please capture canvas first.", "error");
+      return;
+    }
+
+    showStatus("Initializing Tesseract.js OCR engine...", "info");
+    ocrBtn.disabled = true;
+
+    try {
+      // If pageState wasn't fetched yet, attempt fetch so DOM + OCR combine
+      if (!lastPageStateRaw) {
+        try {
+          const resp = await chrome.runtime.sendMessage({ action: "INSPECT_PAGE" });
+          if (resp && resp.status === "success" && resp.pageState) {
+            lastPageStateRaw = resp.pageState;
+          }
+        } catch (e) {
+          console.warn("[OCR] Optional DOM fetch skipped:", e);
+        }
+      }
+
+      const ocrResults = await OCREngine.recognize(canvasPreview, (progress) => {
+        const pct = Math.round(progress * 100);
+        showStatus(`Running OCR: ${pct}% complete...`, "info");
+      });
+
+      console.log("[OCR Raw Results]", ocrResults);
+
+      // ── PRIVACY GATE (Synthesize DOM pageState + OCR results together) ──
+      const gateResult = PrivacyGate.sanitize({
+        pageState: lastPageStateRaw,
+        ocrResults: ocrResults || []
+      });
+
+      lastOCRResults = gateResult.sanitizedOCR || [];
+      currentJsonData = {
+        pageState: gateResult.sanitizedPageState,
+        ocr: lastOCRResults
+      };
+      outputTitle.textContent = `Sanitized Context (${lastOCRResults.length} OCR regions, ${gateResult.privacyReport.totalPIIFound} total PII)`;
+      jsonOutput.textContent = JSON.stringify(currentJsonData, null, 2);
+      renderPrivacyReport(gateResult.privacyReport, gateResult.auditLog);
+      copyBtn.disabled = false;
+
+      const piiCount = gateResult.privacyReport.totalPIIFound;
+      const statusType = piiCount > 0 ? (gateResult.privacyReport.gateVerdict === "BLOCKED" ? "error" : "warning") : "info";
+      showStatus(`Scan complete! DOM + OCR combined: ${piiCount} PII detected (${gateResult.privacyReport.gateVerdict}).`, statusType);
+    } catch (err) {
+      console.error("[OCR Error Raw]", err);
+      const displayErr = err?.message || (typeof err === "object" ? JSON.stringify(err) : String(err));
+      showStatus("OCR Error: " + displayErr, "error");
+    } finally {
+      ocrBtn.disabled = false;
+    }
+  });
+
+  // ── Copy JSON ──
+  copyBtn.addEventListener("click", () => {
+    if (!currentJsonData) return;
+    navigator.clipboard.writeText(JSON.stringify(currentJsonData, null, 2))
+      .then(() => showStatus("Copied sanitized JSON to clipboard!", "info"))
+      .catch((err) => showStatus("Copy failed: " + (err?.message || String(err)), "error"));
+  });
+>>>>>>> ef4731b (feat(privacy): add local Privacy Gate engine with multi-strategy OCR & DOM PII redaction)
+
+  // ── Render PageState ──
   function renderPageState(pageState) {
     if (metaObsId) metaObsId.textContent = pageState.metadata.observationId;
     if (metaTitle) metaTitle.textContent = pageState.metadata.title;
@@ -300,15 +464,82 @@ document.addEventListener("DOMContentLoaded", () => {
     if (metaUrl) metaUrl.textContent = pageState.metadata.url;
     if (metaContainer) metaContainer.classList.remove("hidden");
 
+<<<<<<< HEAD
     if (outputTitle) outputTitle.textContent = "PageState JSON";
     if (jsonOutput) jsonOutput.textContent = JSON.stringify(pageState, null, 2);
+=======
+    outputTitle.textContent = "Sanitized PageState JSON";
+    jsonOutput.textContent = JSON.stringify(pageState, null, 2);
+>>>>>>> ef4731b (feat(privacy): add local Privacy Gate engine with multi-strategy OCR & DOM PII redaction)
   }
 
+  // ── Render Privacy Report ──
+  function renderPrivacyReport(report, auditEntries) {
+    privacyReport.classList.remove("hidden");
+
+    // Verdict badge
+    gateVerdict.textContent = report.gateVerdict;
+    gateVerdict.className = "verdict-badge";
+    if (report.gateVerdict === "PASS") {
+      gateVerdict.classList.add("verdict-pass");
+    } else if (report.gateVerdict === "WARNING") {
+      gateVerdict.classList.add("verdict-warning");
+    } else if (report.gateVerdict === "BLOCKED") {
+      gateVerdict.classList.add("verdict-blocked");
+    }
+
+    // Stat numbers
+    statTotalPII.textContent = report.totalPIIFound;
+    statRedacted.textContent = report.redactedCount;
+    statCritical.textContent = report.bySeverity.CRITICAL || 0;
+    statHigh.textContent = report.bySeverity.HIGH || 0;
+
+    // PII breakdown by type
+    const typeEntries = Object.entries(report.byType);
+    if (typeEntries.length > 0) {
+      piiBreakdown.classList.remove("hidden");
+      piiBreakdownList.innerHTML = "";
+      for (const [type, count] of typeEntries) {
+        const pill = document.createElement("div");
+        pill.className = "breakdown-pill";
+        pill.innerHTML = `<span class="pill-type">${formatTypeName(type)}</span><span class="pill-count">${count}</span>`;
+        piiBreakdownList.appendChild(pill);
+      }
+    } else {
+      piiBreakdown.classList.add("hidden");
+    }
+
+    // Update audit log if visible
+    if (!auditLogContainer.classList.contains("hidden")) {
+      const fullLog = PrivacyGate.getAuditLog();
+      auditLogOutput.textContent = fullLog.length > 0
+        ? JSON.stringify(fullLog, null, 2)
+        : "// No audit entries.";
+    }
+  }
+
+  // ── Helpers ──
   function showStatus(msg, type) {
     if (statusMessage) statusMessage.textContent = msg;
     if (statusContainer) {
       statusContainer.className = `status-container ${type}`;
       statusContainer.classList.remove("hidden");
     }
+  }
+
+  function formatTypeName(type) {
+    const nameMap = {
+      AADHAAR: "Aadhaar",
+      PAN: "PAN",
+      CREDIT_CARD: "Card",
+      INDIAN_MOBILE: "Phone",
+      EMAIL: "Email",
+      UPI_ID: "UPI",
+      IFSC: "IFSC",
+      INDIAN_PASSPORT: "Passport",
+      IP_ADDRESS: "IP",
+      DATE_OF_BIRTH: "DOB"
+    };
+    return nameMap[type] || type;
   }
 });

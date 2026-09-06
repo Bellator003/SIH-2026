@@ -34,7 +34,8 @@
     {
       "resources": [
         "lib/*",
-        "lib/lang/*"
+        "lib/lang/*",
+        "privacy/*"
       ],
       "matches": ["<all_urls>"]
     }

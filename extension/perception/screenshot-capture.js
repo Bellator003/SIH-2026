@@ -8,12 +8,10 @@ class ScreenshotCapture {
    * @returns {Promise<string>} Data URL string of the captured image
    */
   static async captureCurrentTab(options = { format: "png", quality: 90 }) {
-    const currentWindow = await chrome.windows.getCurrent();
-    if (!currentWindow || currentWindow.id === undefined) {
-      throw new Error("Unable to determine current browser window.");
-    }
+    const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    const windowId = activeTab ? activeTab.windowId : null;
 
-    const dataUrl = await chrome.tabs.captureVisibleTab(currentWindow.id, {
+    const dataUrl = await chrome.tabs.captureVisibleTab(windowId, {
       format: options.format || "png",
       quality: options.quality || 90
     });

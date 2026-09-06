@@ -20,8 +20,59 @@
       <button id="synthetic-ocr-btn" class="secondary-btn">Test Synthetic OCR</button>
     </div>
 
+    <!-- Privacy Gate Mode Selector -->
+    <div class="gate-mode-bar">
+      <span class="gate-mode-label">Privacy Gate</span>
+      <div class="gate-mode-toggle">
+        <button class="mode-btn" data-mode="strict">Strict</button>
+        <button class="mode-btn active" data-mode="balanced">Balanced</button>
+        <button class="mode-btn" data-mode="permissive">Permissive</button>
+      </div>
+    </div>
+
     <div id="status-container" class="status-container hidden">
       <div id="status-message">Ready.</div>
+    </div>
+
+    <!-- Privacy Report Section -->
+    <div id="privacy-report" class="privacy-report hidden">
+      <div class="report-header">
+        <span class="report-title">Privacy Gate Report</span>
+        <span id="gate-verdict" class="verdict-badge verdict-pass">PASS</span>
+      </div>
+
+      <div class="report-stats">
+        <div class="stat-card">
+          <span class="stat-number" id="stat-total-pii">0</span>
+          <span class="stat-label">PII Found</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number" id="stat-redacted">0</span>
+          <span class="stat-label">Redacted</span>
+        </div>
+        <div class="stat-card stat-severity">
+          <span class="stat-number critical" id="stat-critical">0</span>
+          <span class="stat-label">Critical</span>
+        </div>
+        <div class="stat-card stat-severity">
+          <span class="stat-number high" id="stat-high">0</span>
+          <span class="stat-label">High</span>
+        </div>
+      </div>
+
+      <!-- PII Type Breakdown -->
+      <div id="pii-breakdown" class="pii-breakdown hidden">
+        <div class="breakdown-title">Detection Breakdown</div>
+        <div id="pii-breakdown-list" class="breakdown-list"></div>
+      </div>
+
+      <!-- Audit Log Toggle -->
+      <div class="audit-section">
+        <button id="toggle-audit-btn" class="audit-toggle-btn">View Audit Log ▸</button>
+        <div id="audit-log-container" class="audit-log-container hidden">
+          <pre id="audit-log-output" class="audit-log-output"></pre>
+        </div>
+      </div>
     </div>
 
     <div id="meta-container" class="meta-grid hidden">
@@ -89,12 +140,18 @@
     </div>
 
     <div class="json-header">
-      <span id="output-title">PageState / OCR Output JSON</span>
+      <span id="output-title">Sanitized Output JSON</span>
     </div>
     <div class="json-container">
       <pre id="json-output">// Click "Inspect DOM", "Run Local OCR", or "Test Synthetic OCR" to view results</pre>
     </div>
   </div>
+
+  <!-- Privacy modules (must load in order: config → detector → redaction → gate) -->
+  <script src="../privacy/privacy-config.js"></script>
+  <script src="../privacy/pii-detector.js"></script>
+  <script src="../privacy/redaction-engine.js"></script>
+  <script src="../privacy/privacy-gate.js"></script>
 
   <script src="../lib/tesseract.min.js"></script>
   <script src="../perception/canvas-processor.js"></script>
