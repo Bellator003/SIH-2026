@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Privacy Vision Agent - Local Test Page</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; line-height: 1.6; max-width: 600px; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; }
+    input { width: 100%; padding: 8px; box-sizing: border-box; }
+    .card { background: #f1f5f9; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    .event-box { background: #e0f2fe; padding: 15px; border-radius: 8px; margin-top: 20px; color: #0369a1; }
+  </style>
+</head>
+<body>
+  <h1>Local PII Test Page</h1>
+  <p>Use the <strong>Privacy Vision Agent</strong> extension to inspect this page.</p>
+
+  <form onsubmit="return false;">
+    <div class="form-group">
+      <label for="pass">Password Field:</label>
+      <input type="password" id="pass" name="user_password" placeholder="Enter password">
+    </div>
+
+    <div class="form-group">
+      <label for="email">Email Field:</label>
+      <input type="email" id="email" name="user_email" placeholder="john@example.com">
+    </div>
+
+    <div class="form-group">
+      <label for="phone">Phone Field:</label>
+      <input type="tel" id="phone" name="user_phone" placeholder="+91 9876543210">
+    </div>
+
+    <div class="form-group">
+      <label for="normal">Normal Text Input:</label>
+      <input type="text" id="normal" name="search" placeholder="Search product">
+    </div>
+  </form>
+
+  <div class="event-box">
+    <h3>Upcoming Event Details</h3>
+    <p>Event Venue: 12 MG Road, Indore</p>
+    <p>Contact: organizer@example.com</p>
+    <p>Phone: 9876543210</p>
+  </div>
+
+  <div class="card">
+    <h3>Sample Text Content</h3>
+    <p>For support, please email <strong>testuser@example.com</strong> or call <strong>+91 9876543210</strong>.</p>
+    <p>Test Payment Card: <span>4111 1111 1111 1111</span> (Visa Test Card)</p>
+  </div>
+</body>
+</html>

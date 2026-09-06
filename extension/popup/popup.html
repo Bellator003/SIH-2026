@@ -58,6 +58,36 @@
       </div>
     </div>
 
+    <!-- Section 1: Structural Form PII -->
+    <div id="pii-debug-container" class="pii-debug-container hidden">
+      <div class="json-header">
+        <span>STRUCTURAL DOM PII (<span id="pii-count">0</span> detected)</span>
+      </div>
+      <div class="json-container">
+        <pre id="pii-json-output">// Structural Form PII Output</pre>
+      </div>
+    </div>
+
+    <!-- Section 2: Page Text Regions & Page Text PII -->
+    <div id="dom-text-debug-container" class="pii-debug-container hidden">
+      <div class="json-header">
+        <span>PAGE TEXT PII (<span id="dom-text-region-count">0</span> text regions, <span id="dom-text-pii-count">0</span> PII)</span>
+      </div>
+      <div class="json-container">
+        <pre id="dom-text-json-output">// Page Text Regions & PII Output</pre>
+      </div>
+    </div>
+
+    <!-- Section 3: OCR PII Detections -->
+    <div id="ocr-pii-debug-container" class="pii-debug-container hidden">
+      <div class="json-header">
+        <span>OCR PII DETECTIONS (OCR RESULTS: <span id="ocr-results-count">0</span>, OCR PII DETECTIONS: <span id="ocr-pii-count">0</span>)</span>
+      </div>
+      <div class="json-container">
+        <pre id="ocr-pii-json-output">// OCR PII Output</pre>
+      </div>
+    </div>
+
     <div class="json-header">
       <span id="output-title">PageState / OCR Output JSON</span>
     </div>
@@ -69,6 +99,10 @@
   <script src="../lib/tesseract.min.js"></script>
   <script src="../perception/canvas-processor.js"></script>
   <script src="../perception/ocr-engine.js"></script>
+  <script src="../privacy/pii-detector/pii-types.js"></script>
+  <script src="../privacy/pii-detector/text-detector.js"></script>
+  <script src="../privacy/pii-detector/dom-detector.js"></script>
+  <script src="../privacy/pii-detector/dom-text-extractor.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

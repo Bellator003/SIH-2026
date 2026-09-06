@@ -14,7 +14,12 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/dom-analyzer.js"],
+      "js": [
+        "privacy/pii-detector/pii-types.js",
+        "privacy/pii-detector/text-detector.js",
+        "privacy/pii-detector/dom-text-extractor.js",
+        "content/dom-analyzer.js"
+      ],
       "run_at": "document_idle"
     }
   ],

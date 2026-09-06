@@ -18,6 +18,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const canvasPreview = document.getElementById("canvas-preview");
   const canvasDim = document.getElementById("canvas-dim");
 
+  const piiDebugContainer = document.getElementById("pii-debug-container");
+  const piiCount = document.getElementById("pii-count");
+  const piiJsonOutput = document.getElementById("pii-json-output");
+
+  const domTextDebugContainer = document.getElementById("dom-text-debug-container");
+  const domTextRegionCount = document.getElementById("dom-text-region-count");
+  const domTextPiiCount = document.getElementById("dom-text-pii-count");
+  const domTextJsonOutput = document.getElementById("dom-text-json-output");
+
+  const ocrPiiDebugContainer = document.getElementById("ocr-pii-debug-container");
+  const ocrResultsCount = document.getElementById("ocr-results-count");
+  const ocrPiiCount = document.getElementById("ocr-pii-count");
+  const ocrPiiJsonOutput = document.getElementById("ocr-pii-json-output");
+
   const dbgWidth = document.getElementById("dbg-width");
   const dbgHeight = document.getElementById("dbg-height");
   const dbgHasData = document.getElementById("dbg-hasdata");
@@ -27,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (inspectBtn) {
     inspectBtn.addEventListener("click", async () => {
-      showStatus("Analyzing webpage DOM...", "info");
+      showStatus("Analyzing webpage DOM & page text...", "info");
       inspectBtn.disabled = true;
 
       try {
@@ -36,7 +50,24 @@ document.addEventListener("DOMContentLoaded", () => {
         if (response && response.status === "success" && response.pageState) {
           currentJsonData = response.pageState;
           renderPageState(currentJsonData);
-          showStatus("DOM analysis complete!", "info");
+
+          // 1. STRUCTURAL DOM PII (From Form Inputs)
+          if (typeof DOMDetector !== "undefined") {
+            const structuralDetections = DOMDetector.detect(response.pageState);
+            console.log("=== STRUCTURAL DOM PII ===", structuralDetections);
+            renderPIIDebug(structuralDetections);
+          }
+
+          // 2. PAGE TEXT PII & DOM TEXT REGIONS (From Whole-Page Text Extraction)
+          if (response.domTextData) {
+            console.log("=== DOM TEXT REGIONS ===", response.domTextData.textRegions);
+            console.log("=== PAGE TEXT PII DETECTIONS ===", response.domTextData.detections);
+            renderDOMTextDebug(response.domTextData);
+            showStatus(`DOM analysis complete! ${response.domTextData.textRegions.length} text regions, ${response.domTextData.detections.length} page text PII.`, "info");
+          } else {
+            showStatus("DOM analysis complete!", "info");
+          }
+
           if (copyBtn) copyBtn.disabled = false;
         } else {
           const errorMsg = response?.message || "Failed to inspect page.";
@@ -110,11 +141,37 @@ document.addEventListener("DOMContentLoaded", () => {
           showStatus(`Running OCR: ${pct}% complete...`, "info");
         });
 
-        currentJsonData = ocrResults;
-        if (outputTitle) outputTitle.textContent = `OCR Results (${ocrResults.length} text regions detected)`;
-        if (jsonOutput) jsonOutput.textContent = JSON.stringify(ocrResults, null, 2);
+        // Pass each OCR text region through existing TextDetector
+        const ocrPiiDetections = [];
+        for (const region of ocrResults) {
+          if (typeof TextDetector !== "undefined") {
+            const detections = TextDetector.detect(region.text, {
+              source: typeof PIISource !== "undefined" ? PIISource.OCR : "OCR",
+              elementId: null,
+              bbox: region.bbox
+            });
+            ocrPiiDetections.push(...detections);
+          }
+        }
+
+        // Temporary DEBUG output
+        console.log(`OCR RESULTS: ${ocrResults.length}`);
+        console.log(`OCR PII DETECTIONS: ${ocrPiiDetections.length}`);
+        console.log("=== OCR PII DETECTIONS ===", ocrPiiDetections);
+
+        renderOCRPIIDebug(ocrResults.length, ocrPiiDetections);
+
+        currentJsonData = {
+          debugSummary: `OCR RESULTS: ${ocrResults.length} | OCR PII DETECTIONS: ${ocrPiiDetections.length}`,
+          ocrResultsCount: ocrResults.length,
+          ocrPiiDetectionsCount: ocrPiiDetections.length,
+          ocrPiiDetections: ocrPiiDetections,
+          ocrResults: ocrResults
+        };
+        if (outputTitle) outputTitle.textContent = `OCR Results & PII (OCR RESULTS: ${ocrResults.length}, OCR PII DETECTIONS: ${ocrPiiDetections.length})`;
+        if (jsonOutput) jsonOutput.textContent = JSON.stringify(currentJsonData, null, 2);
         if (copyBtn) copyBtn.disabled = false;
-        showStatus(`OCR complete! Found ${ocrResults.length} text regions.`, "info");
+        showStatus(`OCR complete! OCR RESULTS: ${ocrResults.length}, OCR PII DETECTIONS: ${ocrPiiDetections.length}.`, "info");
       } catch (err) {
         console.error("[OCR Error Raw]", err);
         const displayErr = err?.message || (typeof err === "object" ? JSON.stringify(err) : String(err));
@@ -131,7 +188,6 @@ document.addEventListener("DOMContentLoaded", () => {
       syntheticOcrBtn.disabled = true;
 
       try {
-        // Create synthetic test canvas
         const testCanvas = CanvasProcessor.createSyntheticTestCanvas(800, 400);
 
         if (canvasPreview) {
@@ -149,7 +205,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const experimentResults = {};
 
-        // --- EXPERIMENT INPUT A: HTMLCanvasElement ---
         showStatus("[Experiment 1/3] Testing Input A: HTMLCanvasElement...", "info");
         console.log("[Experiment 1/3] Testing Input A: HTMLCanvasElement...");
         const resA = await OCREngine.recognize(testCanvas);
@@ -159,7 +214,6 @@ document.addEventListener("DOMContentLoaded", () => {
           results: resA
         };
 
-        // --- EXPERIMENT INPUT B: Data URL string ---
         showStatus("[Experiment 2/3] Testing Input B: canvas.toDataURL('image/png')...", "info");
         console.log("[Experiment 2/3] Testing Input B: canvas.toDataURL('image/png')...");
         const dataUrl = testCanvas.toDataURL("image/png");
@@ -171,7 +225,6 @@ document.addEventListener("DOMContentLoaded", () => {
           results: resB
         };
 
-        // --- EXPERIMENT INPUT C: Uint8Array ---
         showStatus("[Experiment 3/3] Testing Input C: PNG Uint8Array...", "info");
         console.log("[Experiment 3/3] Testing Input C: PNG Uint8Array...");
         const blob = await new Promise(resolve => testCanvas.toBlob(resolve, "image/png"));
@@ -208,6 +261,26 @@ document.addEventListener("DOMContentLoaded", () => {
         .then(() => showStatus("Copied JSON to clipboard!", "info"))
         .catch((err) => showStatus("Copy failed: " + (err?.message || String(err)), "error"));
     });
+  }
+
+  function renderPIIDebug(piiDetections) {
+    if (piiCount) piiCount.textContent = piiDetections.length;
+    if (piiJsonOutput) piiJsonOutput.textContent = JSON.stringify(piiDetections, null, 2);
+    if (piiDebugContainer) piiDebugContainer.classList.remove("hidden");
+  }
+
+  function renderDOMTextDebug(domTextData) {
+    if (domTextRegionCount) domTextRegionCount.textContent = domTextData.textRegions.length;
+    if (domTextPiiCount) domTextPiiCount.textContent = domTextData.detections.length;
+    if (domTextJsonOutput) domTextJsonOutput.textContent = JSON.stringify(domTextData, null, 2);
+    if (domTextDebugContainer) domTextDebugContainer.classList.remove("hidden");
+  }
+
+  function renderOCRPIIDebug(resultsCount, piiDetections) {
+    if (ocrResultsCount) ocrResultsCount.textContent = resultsCount;
+    if (ocrPiiCount) ocrPiiCount.textContent = piiDetections.length;
+    if (ocrPiiJsonOutput) ocrPiiJsonOutput.textContent = JSON.stringify(piiDetections, null, 2);
+    if (ocrPiiDebugContainer) ocrPiiDebugContainer.classList.remove("hidden");
   }
 
   function renderCanvasDebug(stats) {

@@ -14,8 +14,12 @@
     if (request.action === "ANALYZE_DOM") {
       try {
         const pageState = extractPageState();
-        console.log("[DOM Analyzer] PageState generated:", pageState);
-        sendResponse({ pageState });
+        const domTextData = typeof DOMTextExtractor !== "undefined"
+          ? DOMTextExtractor.extractAndDetect()
+          : null;
+
+        console.log("[DOM Analyzer] PageState & DOMTextData generated:", pageState, domTextData);
+        sendResponse({ pageState, domTextData });
       } catch (err) {
         console.error("[DOM Analyzer] Error during DOM analysis:", err);
         sendResponse({ error: err.message });
@@ -96,11 +100,9 @@
       const placeholder = el.getAttribute("placeholder") || null;
       const name = el.getAttribute("name") || null;
 
-      // Extract accessible name and text separately (NEVER include raw input.value)
       const accessibleName = getAccessibleName(el);
       const text = getDisplayText(el);
 
-      // Interaction properties
       const isEditable = tag === "textarea" ||
         (tag === "input" && !["button", "submit", "checkbox", "radio", "reset", "file", "image"].includes(type)) ||
         el.isContentEditable;
@@ -169,11 +171,9 @@
   }
 
   function getAccessibleName(el) {
-    // 1. aria-label
     const ariaLabel = el.getAttribute("aria-label");
     if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim().substring(0, 100);
 
-    // 2. aria-labelledby
     const ariaLabelledBy = el.getAttribute("aria-labelledby");
     if (ariaLabelledBy) {
       const labels = ariaLabelledBy.split(/\s+/).map(id => document.getElementById(id)).filter(Boolean);
@@ -181,7 +181,6 @@
       if (labelText) return labelText.substring(0, 100);
     }
 
-    // 3. Associated <label> element
     if (el.id) {
       const labelEl = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
       if (labelEl && labelEl.innerText.trim()) {
@@ -194,11 +193,9 @@
       if (labelText) return labelText.substring(0, 100);
     }
 
-    // 4. alt attribute
     const alt = el.getAttribute("alt");
     if (alt && alt.trim()) return alt.trim().substring(0, 100);
 
-    // 5. title attribute
     const title = el.getAttribute("title");
     if (title && title.trim()) return title.trim().substring(0, 100);
 

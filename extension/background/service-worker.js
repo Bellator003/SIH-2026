@@ -7,7 +7,7 @@ console.log("[Service Worker] Initialized.");
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "INSPECT_PAGE") {
     handleInspectPage()
-      .then((pageState) => sendResponse({ status: "success", pageState }))
+      .then((data) => sendResponse({ status: "success", pageState: data.pageState, domTextData: data.domTextData }))
       .catch((error) => sendResponse({ status: "error", message: error.message }));
     return true; // Async response
   }
@@ -30,20 +30,25 @@ async function handleInspectPage() {
     const response = await chrome.tabs.sendMessage(activeTab.id, { action: "ANALYZE_DOM" });
     if (response && response.pageState) {
       console.log("[Service Worker] PageState captured successfully:", response.pageState);
-      return response.pageState;
+      return response;
     }
     throw new Error("Empty response from content script.");
   } catch (err) {
     console.warn("[Service Worker] Direct message failed, attempting dynamic injection...", err.message);
     await chrome.scripting.executeScript({
       target: { tabId: activeTab.id },
-      files: ["content/dom-analyzer.js"]
+      files: [
+        "privacy/pii-detector/pii-types.js",
+        "privacy/pii-detector/text-detector.js",
+        "privacy/pii-detector/dom-text-extractor.js",
+        "content/dom-analyzer.js"
+      ]
     });
 
     const response = await chrome.tabs.sendMessage(activeTab.id, { action: "ANALYZE_DOM" });
     if (response && response.pageState) {
       console.log("[Service Worker] PageState captured via injection:", response.pageState);
-      return response.pageState;
+      return response;
     }
     throw new Error("Failed to receive PageState after script injection.");
   }
